@@ -47,41 +47,6 @@
 #define PLY_FRAME_BUFFER_DEFAULT_FB_DEVICE_NAME "/dev/fb0"
 #endif
 
-struct _ply_frame_buffer
-{
-  char *device_name;
-  int   device_fd;
-
-  char *map_address;
-  size_t size;
-
-  uint32_t *shadow_buffer;
-
-  uint32_t red_bit_position;
-  uint32_t green_bit_position;
-  uint32_t blue_bit_position;
-  uint32_t alpha_bit_position;
-
-  uint32_t bits_for_red;
-  uint32_t bits_for_green;
-  uint32_t bits_for_blue;
-  uint32_t bits_for_alpha;
-
-  int32_t dither_red;
-  int32_t dither_green;
-  int32_t dither_blue;
-
-  unsigned int bytes_per_pixel;
-  unsigned int row_stride;
-
-  ply_frame_buffer_area_t area;
-  ply_frame_buffer_area_t area_to_flush;
-
-  void (*flush)(ply_frame_buffer_t *buffer);
-
-  int pause_count;
-};
-
 static bool ply_frame_buffer_open_device (ply_frame_buffer_t  *buffer);
 static void ply_frame_buffer_close_device (ply_frame_buffer_t *buffer);
 static bool ply_frame_buffer_query_device (ply_frame_buffer_t *buffer);
@@ -181,6 +146,58 @@ flush_xrgb32 (ply_frame_buffer_t *buffer)
       memcpy (dst, src, buffer->area_to_flush.width * 4);
       dst += buffer->row_stride * 4;
       src += buffer->area.width * 4;
+    }
+}
+
+static void
+flush_xbgr32 (ply_frame_buffer_t *buffer)
+{
+  unsigned long x1, y1, x2, y2, x, y;
+  char *dst, *src;
+
+  x1 = buffer->area_to_flush.x;
+  y1 = buffer->area_to_flush.y;
+  x2 = x1 + buffer->area_to_flush.width;
+  y2 = y1 + buffer->area_to_flush.height;
+
+  for (y = y1; y < y2; y++)
+    {
+     dst = &buffer->map_address[(y * buffer->row_stride + x1) * 4];
+     src = (char *) &buffer->shadow_buffer[y * buffer->area.width + x1];
+
+     for (x = x1; x < x2; x++)
+       {
+         dst[0] = src[2];
+         dst[1] = src[1];
+         dst[2] = src[0];
+         dst[3] = src[3];
+         dst += 4;
+         src += 4;
+       }
+    }
+}
+
+static void
+flush_rgb16 (ply_frame_buffer_t *buffer)
+{
+  unsigned long x1, y1, x2, y2, x, y;
+  unsigned short *dst; unsigned char *src;
+
+  x1 = buffer->area_to_flush.x;
+  y1 = buffer->area_to_flush.y;
+  x2 = x1 + buffer->area_to_flush.width;
+  y2 = y1 + buffer->area_to_flush.height;
+
+  for (y = y1; y < y2; y++)
+    {
+     dst = (unsigned short *)&buffer->map_address[(y * buffer->row_stride + x1) * 2];
+     src = (unsigned char *) &buffer->shadow_buffer[y * buffer->area.width + x1];
+
+     for (x = x1; x < x2; x++)
+       {
+         *dst++ = (src[0]>>3) << 0 | (src[1]>>2) << 5 | (src[2]>>3) << 11;
+         src += 4;
+       }
     }
 }
 
@@ -290,7 +307,7 @@ ply_frame_buffer_query_device (ply_frame_buffer_t *buffer)
   buffer->bytes_per_pixel = variable_screen_info.bits_per_pixel >> 3;
   buffer->row_stride = fixed_screen_info.line_length / buffer->bytes_per_pixel;
   buffer->size = buffer->area.height * buffer->row_stride * buffer->bytes_per_pixel;
-  
+
   buffer->dither_red = 0;
   buffer->dither_green = 0;
   buffer->dither_blue = 0;
@@ -300,6 +317,16 @@ ply_frame_buffer_query_device (ply_frame_buffer_t *buffer)
       buffer->green_bit_position == 8 && buffer->bits_for_green == 8 &&
       buffer->blue_bit_position == 0 && buffer->bits_for_blue == 8)
     buffer->flush = flush_xrgb32;
+  else if (buffer->bytes_per_pixel == 4 &&
+           buffer->red_bit_position == 0 && buffer->bits_for_red == 8 &&
+           buffer->green_bit_position == 8 && buffer->bits_for_green == 8 &&
+           buffer->blue_bit_position == 16 && buffer->bits_for_blue == 8)
+    buffer->flush = flush_xbgr32;
+  else if (buffer->bytes_per_pixel == 2 &&
+           buffer->red_bit_position == 11 && buffer->bits_for_red == 5 &&
+           buffer->green_bit_position == 5 && buffer->bits_for_green == 6 &&
+           buffer->blue_bit_position == 0 && buffer->bits_for_blue == 5)
+    buffer->flush = flush_rgb16;
   else
     buffer->flush = flush_generic;
 
@@ -320,7 +347,7 @@ ply_frame_buffer_map_to_device (ply_frame_buffer_t *buffer)
 }
 
 
-static inline void 
+static inline void
 ply_frame_buffer_set_value_at_pixel (ply_frame_buffer_t *buffer,
                                        int             x,
                                        int             y,
@@ -390,8 +417,8 @@ ply_frame_buffer_flush (ply_frame_buffer_t *buffer)
 
   buffer->area_to_flush.x = buffer->area.width - 1;
   buffer->area_to_flush.y = buffer->area.height - 1;
-  buffer->area_to_flush.width = 0; 
-  buffer->area_to_flush.height = 0; 
+  buffer->area_to_flush.width = 0;
+  buffer->area_to_flush.height = 0;
 
   return true;
 }
@@ -432,7 +459,7 @@ ply_frame_buffer_free (ply_frame_buffer_t *buffer)
   free (buffer);
 }
 
-bool 
+bool
 ply_frame_buffer_open (ply_frame_buffer_t *buffer)
 {
   bool is_open;
@@ -493,7 +520,7 @@ ply_frame_buffer_unpause_updates (ply_frame_buffer_t *buffer)
   return ply_frame_buffer_flush (buffer);
 }
 
-bool 
+bool
 ply_frame_buffer_device_is_open (ply_frame_buffer_t *buffer)
 {
   assert (buffer != NULL);
@@ -526,7 +553,7 @@ ply_frame_buffer_set_device_name (ply_frame_buffer_t *buffer,
     }
 }
 
-void 
+void
 ply_frame_buffer_close (ply_frame_buffer_t *buffer)
 {
   assert (buffer != NULL);
@@ -541,7 +568,7 @@ ply_frame_buffer_close (ply_frame_buffer_t *buffer)
   buffer->area.height = 0;
 }
 
-void 
+void
 ply_frame_buffer_get_size (ply_frame_buffer_t     *buffer,
                            ply_frame_buffer_area_t *size)
 {
@@ -705,7 +732,7 @@ ply_frame_buffer_fill_with_gradient (ply_frame_buffer_t      *buffer,
 }
 
 
-bool 
+bool
 ply_frame_buffer_fill_with_argb32_data_with_clip (ply_frame_buffer_t      *buffer,
                                                    ply_frame_buffer_area_t *area,
                                                    ply_frame_buffer_area_t *clip,
@@ -756,7 +783,7 @@ ply_frame_buffer_fill_with_argb32_data_with_clip (ply_frame_buffer_t      *buffe
   return ply_frame_buffer_flush (buffer);
 }
 
-bool 
+bool
 ply_frame_buffer_fill_with_argb32_data(ply_frame_buffer_t      *buffer,
                                                    ply_frame_buffer_area_t *area,
                                                    unsigned long            x,
@@ -785,7 +812,7 @@ ply_frame_buffer_fill_with_argb32_data(ply_frame_buffer_t      *buffer,
 
   return ply_frame_buffer_flush (buffer);
 }
-  
+
 const char *
 ply_frame_buffer_get_bytes (ply_frame_buffer_t *buffer)
 {

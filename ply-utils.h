@@ -57,10 +57,10 @@ bool ply_get_credentials_from_fd (int    fd,
 
 bool ply_write (int         fd,
                 const void *buffer,
-                size_t      number_of_bytes); 
+                size_t      number_of_bytes);
 bool ply_read (int     fd,
                void   *buffer,
-               size_t  number_of_bytes); 
+               size_t  number_of_bytes);
 
 bool ply_fd_has_data (int fd);
 bool ply_fd_can_take_data (int fd);

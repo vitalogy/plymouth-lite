@@ -43,6 +43,7 @@
 #include <png.h>
 
 #include <linux/fb.h>
+#include "ply-frame-buffer.h"
 
 #define MIN(a,b) ((a) <= (b)? (a) : (b))
 #define MAX(a,b) ((a) >= (b)? (a) : (b))
@@ -140,7 +141,7 @@ transform_to_argb32 (png_struct   *png,
 {
   unsigned int i;
 
-  for (i = 0; i < row_info->rowbytes; i += 4) 
+  for (i = 0; i < row_info->rowbytes; i += 4)
   {
     uint8_t  red, green, blue, alpha;
     uint32_t pixel_value;
@@ -167,7 +168,7 @@ transform_to_rgb32 (png_struct   *png,
 {
   unsigned int i;
 
-  for (i = 0; i < row_info->rowbytes; i += 4) 
+  for (i = 0; i < row_info->rowbytes; i += 4)
   {
     uint8_t  red, green, blue, alpha;
     uint32_t pixel_value;
@@ -220,7 +221,7 @@ ply_image_load (ply_image_t *image)
     png_set_palette_to_rgb (png);
 
   if ((color_type == PNG_COLOR_TYPE_GRAY) && (bits_per_pixel < 8))
-    png_set_gray_1_2_4_to_8 (png);
+    png_set_expand_gray_1_2_4_to_8 (png);
 
   if (png_get_valid (png, info, PNG_INFO_tRNS))
     png_set_tRNS_to_alpha (png);
@@ -397,7 +398,7 @@ hide_cursor (void)
 {
   static const char invisible_cursor[] = "\033[?25l\033[?1c";
 
-  if (write (STDOUT_FILENO, invisible_cursor, 
+  if (write (STDOUT_FILENO, invisible_cursor,
              sizeof (invisible_cursor) - 1) != sizeof (invisible_cursor) - 1)
     return false;
 
@@ -439,7 +440,7 @@ main (int    argc,
 
   exit_code = 0;
 
-//  hide_cursor ();
+  hide_cursor ();
 
   if (argc == 1)
     image = ply_image_new ("/usr/share/plymouth/splash.png");
@@ -463,6 +464,8 @@ main (int    argc,
       perror ("could not open framebuffer");
       return exit_code;
     }
+
+  image = ply_image_resize(image, buffer->area.width, buffer->area.height);
 
   animate_at_time (buffer, image);
 
