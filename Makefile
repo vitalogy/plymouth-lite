@@ -7,6 +7,7 @@ clean:
 
 install: ply-image
 	mkdir -p $(DESTDIR)/usr/bin
-	mkdir -p $(DESTDIR)/usr/share/plymouth
+	mkdir -p $(DESTDIR)/usr/share/plymouth-lite
 	cp ply-image $(DESTDIR)/usr/bin
-	cp splash.png $(DESTDIR)/usr/share/plymouth/splash.png
+	cp splash/splash.png $(DESTDIR)/usr/share/plymouth-lite/splash.png
+	cp splash/arch-splash.png $(DESTDIR)/usr/share/plymouth-lite/arch-splash.png
