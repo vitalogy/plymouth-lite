@@ -1,0 +1,14 @@
+[Unit]
+Description=Show Plymouth-lite Boot Screen on FBTFT
+After=systemd-modules-load.service
+ConditionPathExists=/dev/fb1
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'FRAMEBUFFER=/dev/fb1 /usr/bin/ply-image /usr/share/plymouth-lite/arch-splash.png'
+ExecStop=/bin/sh -c 'FRAMEBUFFER=/dev/fb1 /usr/bin/ply-image /usr/share/plymouth-lite/arch-splash.png'
+
+[Install]
+WantedBy=multi-user.target
+

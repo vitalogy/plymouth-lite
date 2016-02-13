@@ -1,6 +1,6 @@
 
-ply-image: ply-image.c ply-frame-buffer.c Makefile
-	$(CC) $(CFLAGS) `pkg-config --cflags libpng`  ply-image.c ply-frame-buffer.c -o ply-image  -lm `pkg-config --libs libpng`
+ply-image: src/ply-image.c src/ply-frame-buffer.c Makefile
+	$(CC) $(CFLAGS) `pkg-config --cflags libpng`  src/ply-image.c src/ply-frame-buffer.c -o ply-image  -lm `pkg-config --libs libpng`
 
 clean:
 	rm -f ply-image *~ gmon.out
