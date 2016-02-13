@@ -1,0 +1,14 @@
+[Unit]
+Description=Show Plymouth-lite Boot Screen on LCD
+After=systemd-modules-load.service
+ConditionPathExists=/dev/fb0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/plymouth-lite.conf
+ExecStart=/bin/sh -c 'FRAMEBUFFER=/dev/fb0 /usr/bin/ply-image ${LCD_SPLASH_START}'
+ExecStop=/bin/sh -c 'FRAMEBUFFER=/dev/fb0 /usr/bin/ply-image ${LCD_SPLASH_STOP}'
+
+[Install]
+WantedBy=multi-user.target

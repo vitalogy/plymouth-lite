@@ -6,8 +6,9 @@ ConditionPathExists=/dev/fb1
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/sh -c 'FRAMEBUFFER=/dev/fb1 /usr/bin/ply-image /usr/share/plymouth-lite/arch-splash.png'
-ExecStop=/bin/sh -c 'FRAMEBUFFER=/dev/fb1 /usr/bin/ply-image /usr/share/plymouth-lite/arch-splash.png'
+EnvironmentFile=/etc/plymouth-lite.conf
+ExecStart=/bin/sh -c 'FRAMEBUFFER=/dev/fb1 /usr/bin/ply-image ${FBTFT_SPLASH_START}'
+ExecStop=/bin/sh -c 'FRAMEBUFFER=/dev/fb1 /usr/bin/ply-image ${FBTFT_SPLASH_STOP}'
 
 [Install]
 WantedBy=multi-user.target
